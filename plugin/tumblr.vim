@@ -5,6 +5,9 @@
 "Exit quickly when:
 "- this plugin was already loaded (or disabled)
 "- when 'compatible' is set
+if !has('python')
+    finish
+endif
 if (exists("g:loaded_tumblr") && g:loaded_tumblr) || &cp
     finish
 endif
@@ -35,7 +38,7 @@ if !exists('g:tumblr_group')
     let g:tumblr_group = ""
 endif
 
-python <<EOF
+:python <<EOF
 import vim
 from urllib import urlencode, urlopen
 
