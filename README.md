@@ -1,6 +1,12 @@
 # tumblr.vim
 Script that allows you to post regular type posts to Tumblr.
 
+## Install
+If you are a Vundle user:
+
+1. run :BundleInstall sonesuke/tumblr-vim within Vim
+1. add Bundle 'sonesuke/tumblr-vim' to your Vundle powered .vimrc
+
 ## Features
 - Begin a new post by opening a buffer and using the :TumblrNew command.
 - when finished use the :TumblrPost command.
