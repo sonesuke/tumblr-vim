@@ -22,7 +22,6 @@ command! -nargs=0 TumblrNew exec("py new_post()")
 command! -nargs=0 TumblrPost exec("py post_normal()")
 command! -nargs=0 TumblrClearConfig exec("py clear_config()")
 command! -nargs=0 TumblrSwitchGroup exec("py switch_group()")
-command! -range TumblrPostRange exec('py post_range(<f-line1>, <f-line2>)')
 " }}}1
 
 " let &cpo = s:cpo_save
@@ -52,14 +51,20 @@ def get_title():
     title = first_line.strip()
     return title
 
+def get_tags():
+    first_line = vim.current.buffer[1]
+    title = first_line.strip()
+    return title
+
 def get_body():
-    body = "\n".join(vim.current.buffer[1:])
+    body = "\n".join(vim.current.buffer[2:])
     return body
 
 def post_normal():
     title = get_title()
+    tags = get_tags()
     body = get_body()
-    send_post(title, body)
+    send_post(title, body, tags)
 
 def clear_config():
     vim.command('let g:tumblr_email = ""')
@@ -72,7 +77,7 @@ def switch_group():
     vim.command('redraw!')
     print "changed to " + new_group
 
-def send_post(title, body):
+def send_post(title, body, tags):
     url = "http://www.tumblr.com/api/write"
     email = vim.eval("g:tumblr_email")
     password = vim.eval("g:tumblr_password")
@@ -89,9 +94,9 @@ def send_post(title, body):
 	vim.command('let g:tumblr_password = "%s"' % password)
 
     if group == '':
-	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "markdown"})
+	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "markdown", "tags":tags})
     else:
-	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "markdown", "group": group})
+	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "markdown", "tags":tags, "group": group})
     res = urlopen(url, data)
 
     vim.command('redraw!')
@@ -102,15 +107,6 @@ def send_post(title, body):
 	print "Bad Authentication"
     if res.code == 400:
 	print "Bad Request"
-
-def post_range(line1, line2):
-    range = vim.current.buffer.range(int(line1), int(line2))
-    if len(range) < 2:
-        print "Range can't be less than two lines."
-    else:
-        title = range[0]
-        body = "\n".join(range[1:])
-        send_post(title, body)
 
 def vim_input(message = 'input', secret = False):
     vim.command('call inputsave()')
