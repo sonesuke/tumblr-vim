@@ -21,6 +21,7 @@ let g:loaded_tumblr = 1
 command! -nargs=0 TumblrNew exec("py new_post()")
 command! -nargs=0 TumblrPost exec("py post_normal()")
 command! -nargs=0 TumblrClearConfig exec("py clear_config()")
+command! -nargs=1 TumblrSwitchGroup exec("py switch_group(<f-args>)")
 command! -range TumblrPostRange exec('py post_range(<f-line1>, <f-line2>)')
 " }}}1
 
@@ -46,18 +47,28 @@ def new_post():
     cb = vim.current.buffer
     vim.command("set ft=mkd") # set filetype as markdown
 
+def get_title():
+    first_line = vim.current.buffer[0]
+    title = first_line.strip()
+    return title
+
 def get_body():
-    body = "\n".join(vim.current.buffer[2:])
+    body = "\n".join(vim.current.buffer[1:])
     return body
 
 def post_normal():
+    title = get_title()
     body = get_body()
-    send_post("", body)
+    send_post(title, body)
 
 def clear_config():
     vim.command('let g:tumblr_email = ""')
     vim.command('let g:tumblr_password = ""')
     vim.command('let g:tumblr_group = ""')
+
+def switch_group(new_group):
+    vim.command('let g:tumblr_group = "%s"' % new_group)
+    print "changed to " + new_group
 
 def send_post(title, body):
     url = "http://www.tumblr.com/api/write"
@@ -82,7 +93,13 @@ def send_post(title, body):
     res = urlopen(url, data)
 
     vim.command('redraw!')
-    vim.command('echo "OK !"')
+
+    if res.code == 201:
+	print "Posted"
+    if res.code == 403:
+	print "Bad Authentication"
+    if res.code == 400:
+	print "Bad Request"
 
 def post_range(line1, line2):
     range = vim.current.buffer.range(int(line1), int(line2))
