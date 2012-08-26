@@ -69,6 +69,7 @@ def clear_config():
 def switch_group():
     new_group = vim_input('new group')
     vim.command('let g:tumblr_group = "%s"' % new_group)
+    vim.command('redraw!')
     print "changed to " + new_group
 
 def send_post(title, body):
