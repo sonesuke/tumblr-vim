@@ -49,7 +49,7 @@ def new_post():
     cb[0] = "replace this title"
     cb[1] = "tag1, tag2, ...."
     cb[2] = "body"
-    vim.command("set ft=html") # set filetype as html
+    vim.command("set ft=markdown") # set filetype as html
 
 def get_title():
     first_line = vim.current.buffer[0]
@@ -99,9 +99,9 @@ def send_post(title, body, tags):
 	vim.command('let g:tumblr_password = "%s"' % password)
 
     if group == '':
-	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "html", "tags":tags})
+	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "markdown", "tags":tags})
     else:
-	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "html", "tags":tags, "group": group})
+	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "markdown", "tags":tags, "group": group})
     res = urlopen(url, data)
 
     vim.command('redraw!')
