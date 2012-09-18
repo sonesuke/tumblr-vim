@@ -44,7 +44,10 @@ from urllib import urlencode, urlopen
 
 def new_post():
     cb = vim.current.buffer
-    vim.command("set ft=mkd") # set filetype as markdown
+    vim.current.buffer[0] = "replace this title"
+    vim.current.buffer[1] = "tag1, tag2, ...."
+    vim.current.buffer[2] = "body"
+    vim.command("set ft=html") # set filetype as html
 
 def get_title():
     first_line = vim.current.buffer[0]
@@ -94,9 +97,9 @@ def send_post(title, body, tags):
 	vim.command('let g:tumblr_password = "%s"' % password)
 
     if group == '':
-	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "markdown", "tags":tags})
+	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "html", "tags":tags})
     else:
-	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "markdown", "tags":tags, "group": group})
+	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "html", "tags":tags, "group": group})
     res = urlopen(url, data)
 
     vim.command('redraw!')
