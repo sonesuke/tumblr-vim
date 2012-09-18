@@ -44,9 +44,11 @@ from urllib import urlencode, urlopen
 
 def new_post():
     cb = vim.current.buffer
-    vim.current.buffer[0] = "replace this title"
-    vim.current.buffer[1] = "tag1, tag2, ...."
-    vim.current.buffer[2] = "body"
+    for i in range(3):
+	cb.append("")
+    cb[0] = "replace this title"
+    cb[1] = "tag1, tag2, ...."
+    cb[2] = "body"
     vim.command("set ft=html") # set filetype as html
 
 def get_title():
