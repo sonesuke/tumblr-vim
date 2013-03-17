@@ -8,9 +8,9 @@
 if !has('python')
     finish
 endif
-if (exists("g:loaded_tumblr") && g:loaded_tumblr) || &cp
-    finish
-endif
+" if (exists("g:loaded_tumblr") && g:loaded_tumblr) || &cp
+"     finish
+" endif
 
 let g:loaded_tumblr = 1
 
@@ -26,12 +26,20 @@ command! -nargs=0 TumblrSwitchGroup exec("py switch_group()")
 
 " let &cpo = s:cpo_save
 
-if !exists('g:tumblr_email')
-    let g:tumblr_email = ""
+if !exists('g:tumblr_consumer_key')
+    let g:tumblr_consumer_key = ""
 endif
 
-if !exists('g:tumblr_password')
-    let g:tumblr_password = ""
+if !exists('g:tumblr_consumer_secret')
+    let g:tumblr_consumer_secret = ""
+endif 
+
+if !exists('g:tumblr_base_hostname')
+    let g:tumblr_base_hostname = ""
+endif
+
+if !exists('g:tumblr_oauth_verifier')
+    let g:tumblr_oauth_verifier = ""
 endif
 
 if !exists('g:tumblr_group')
@@ -39,8 +47,14 @@ if !exists('g:tumblr_group')
 endif
 
 :python <<EOF
-import vim
-from urllib import urlencode, urlopen
+import vim 
+import oauth2
+import urlparse
+from urllib import urlencode, urlopen 
+
+REQUEST_TOKEN_URL = 'http://www.tumblr.com/oauth/request_token'
+AUTHORIZE_URL = 'http://www.tumblr.com/oauth/authorize'
+ACCESS_TOKEN_URL = 'http://www.tumblr.com/oauth/access_token'
 
 def new_post():
     cb = vim.current.buffer
@@ -72,52 +86,83 @@ def post_normal():
     send_post(title, body, tags)
 
 def clear_config():
-    vim.command('let g:tumblr_email = ""')
-    vim.command('let g:tumblr_password = ""')
-    vim.command('let g:tumblr_group = ""')
+    vim.command('let g:tumblr_consumer_key = ""')
+    vim.command('let g:tumblr_consumer_secret = ""')
+    vim.command('let g:tumblr_base_hostname = ""')
+    vim.command('let g:tumblr_oauth_verifier = ""')
 
-def switch_group():
-    new_group = vim_input('new group')
-    vim.command('let g:tumblr_group = "%s"' % new_group)
-    vim.command('redraw!')
-    print "changed to " + new_group
+def send_post(title, body, tags): 
+    consumer_key = vim.eval("g:tumblr_consumer_key")
+    consumer_secret = vim.eval("g:tumblr_consumer_secret")
+    base_hostname = vim.eval("g:tumblr_base_hostname")
+    oauth_verifier = vim.eval("g:tumblr_oauth_verifier")
 
-def send_post(title, body, tags):
-    url = "http://www.tumblr.com/api/write"
-    email = vim.eval("g:tumblr_email")
-    password = vim.eval("g:tumblr_password")
-    group = vim.eval("g:tumblr_group")
-    enc = vim.eval('&encoding')
-    body = body.decode(enc).encode('utf-8')
+    body = body.encode('utf-8')
 
-    if email == '':
-	email = vim_input('mail')
-	vim.command('let g:tumblr_email = "%s"' % email)
+    if consumer_key == '':
+	consumer_key = vim_input('consumer_key')
+	vim.command('let g:tumblr_consumer_key = "%s"' % consumer_key)
 
-    if password == '':
-	password = vim_input('password')
-	vim.command('let g:tumblr_password = "%s"' % password)
+    if consumer_secret == '':
+	consumer_secret = vim_input('consumer_secret')
+	vim.command('let g:tumblr_consumer_secret = "%s"' % consumer_secret) 
 
-    if group == '':
-	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "markdown", "tags":tags})
-    else:
-	data = urlencode({"email" : email, "password" : password, "title" : title, "body" : body, "format": "markdown", "tags":tags, "group": group})
-    res = urlopen(url, data)
+    if base_hostname == '':
+	base_hostname = vim_input('base_hostname')
+	vim.command('let g:tumblr_base_hostname = "%s"' % base_hostname)   
 
-    vim.command('redraw!')
 
-    if res.code == 201:
-	print "Posted"
-    if res.code == 403:
-	print "Bad Authentication"
-    if res.code == 400:
-	print "Bad Request"
+    consumer = oauth2.Consumer(key = consumer_key, secret = consumer_secret) 
+
+    request_token = get_request_token(consumer)  
+    if len(request_token) == 0:
+        print "consumer_key or consumer_secret is invalid"          
+        return 
+ 
+    if oauth_verifier == '':
+        oauth_verifier = get_verifier(request_token) 
+        vim.command('let g:tumblr_oauth_verifier = "%s"' % oauth_verifier)    
+
+    access_token = get_access_token(consumer, request_token, oauth_verifier)  
+    print access_token
+
+    url = 'http://api.tumblr.com/v2/blog/%s/post' % base_hostname
+    token = oauth2.Token(key = access_token['oauth_token'], secret = access_token['oauth_token_secret']) 
+
+    params = {
+        'type': 'text',
+        'state': 'draft',
+        'title': title,
+        'body': body,
+    }
+    client = oauth2.Client(consumer, token)
+    resp, content = client.request(url, method = 'POST', body = urlencode(params)) 
+
 
 def vim_input(message = 'input', secret = False):
     vim.command('call inputsave()')
     vim.command("let s:user_input = %s('%s :')" % (("inputsecret" if secret else "input"), message))
     vim.command('call inputrestore()')
-    return vim.eval('s:user_input')
+    return vim.eval('s:user_input') 
+
+def get_request_token(consumer):
+    client = oauth2.Client(consumer)
+    resp, content = client.request(REQUEST_TOKEN_URL, 'GET')
+    return dict(urlparse.parse_qsl(content))
+ 
+def get_verifier(request_token):   
+    auth_url = '%s?oauth_token=%s' % (AUTHORIZE_URL, request_token['oauth_token'])   
+    print "access verifier url and get oauth verifier:  %s"  % auth_url
+    oauth_verifier = vim_input('oauth_verifier')
+    return oauth_verifier
+ 
+def get_access_token(consumer, request_token, oauth_verifier):
+    token = oauth2.Token(request_token['oauth_token'],
+                         request_token['oauth_token_secret'])
+    token.set_verifier(oauth_verifier)
+    client = oauth2.Client(consumer, token)
+    resp, content = client.request(ACCESS_TOKEN_URL, 'POST') 
+    return dict(urlparse.parse_qsl(content))
 
 EOF
 
